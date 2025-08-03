@@ -1,0 +1,137 @@
+<div class="h-full flex flex-col">
+  <div class="p-4 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between">
+    <mat-tab-group [selectedIndex]="currentView" (selectedIndexChange)="onTabChange($event)">
+      <mat-tab label="Form Canvas"></mat-tab>
+      <mat-tab label="Preview"></mat-tab>
+    </mat-tab-group>
+    <button *ngIf="currentView === 0" mat-raised-button color="primary" (click)="addRow()">
+      <mat-icon>add</mat-icon> Add Row
+    </button>
+  </div>
+
+  <div class="canva-rows flex-1 p-4 overflow-y-auto" [ngSwitch]="currentView">
+    <div *ngSwitchCase="0" class="h-full space-y-4">
+      <div *ngIf="!formConfig.rows.length"
+            class="p-8 text-center text-gray-500 border border-dashed rounded-lg">
+        Drag form elements here or click "Add Row".
+      </div>
+      <div cdkDropListGroup>
+        <div *ngFor="let row of formConfig.rows; let rowIndex = index"
+              class="relative p-4 mb-4 border border-gray-300 rounded-lg bg-gray-50 group">
+          <span class="text-sm font-semibold text-gray-400 absolute top-0 left-2 -mt-2.5 px-1 bg-gray-50">Row {{ rowIndex + 1 }}</span>
+          <div class="absolute top-0 right-0 m-1 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            <button mat-icon-button color="warn" (click)="deleteRow(rowIndex)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+
+          <div [id]="row.id"
+                cdkDropList
+                [cdkDropListData]="row.elements"
+                [cdkDropListConnectedTo]="dropListContainers"
+                (cdkDropListDropped)="drop($event, rowIndex)"
+                class="min-h-[6rem] p-2 border-2 border-dashed border-gray-400 rounded-lg flex flex-wrap gap-2"
+                [ngClass]="{'bg-blue-50': row.elements.length > 0, 'bg-white': row.elements.length === 0}">
+            <div *ngIf="!row.elements.length"
+                  class="text-center text-gray-400 p-4 w-full">
+              Drag and drop form elements here
+            </div>
+            <div *ngFor="let element of row.elements; let elementIndex = index"
+                  cdkDrag
+                  [cdkDragData]="element"
+                  (cdkDragStarted)="onDragStarted()"
+                  (cdkDragEnded)="onDragEnded()"
+                  (click)="selectElement(element)"
+                  [ngClass]="{'ring-2 ring-blue-500 shadow-md': element.id === selectedElement?.id, 'cursor-grab': !isDraggingItem,
+                             'w-full': row.elements.length === 1,
+                             'w-[calc(50%-0.25rem)]': row.elements.length === 2,
+                             'w-[calc(33.33%-0.333rem)]': row.elements.length >= 3
+                           }"
+                  class="relative p-2 bg-white rounded-md border border-gray-200">
+              <div class="flex items-center space-x-2">
+                <mat-icon [svgIcon]="getIcon(element.type)" class="text-gray-500"></mat-icon>
+                <span>{{ element.label }}</span>
+              </div>
+              <div class="absolute top-0 right-0 m-1 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <button mat-icon-button color="warn" (click)="deleteElement(rowIndex, elementIndex); $event.stopPropagation()">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+              <div *cdkDragPlaceholder class="bg-blue-100 border-2 border-dashed border-blue-500 p-4 rounded-md text-center text-blue-600">
+                Drop here
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngSwitchCase="1" class="p-4 bg-white rounded-lg shadow-xl">
+      <form [formGroup]="previewForm" (ngSubmit)="onPreviewFormSubmit()" class="space-y-6">
+        <ng-container *ngFor="let row of formConfig.rows">
+          <div [ngClass]="{'grid': true, 'grid-cols-1': row.elements.length === 1, 'grid-cols-2': row.elements.length === 2, 'grid-cols-3': row.elements.length >= 3}" class="gap-2">
+            <ng-container *ngFor="let element of row.elements">
+              <ng-container [ngSwitch]="element.type">
+                <mat-form-field *ngSwitchCase="'text'" appearance="outline" class="w-full">
+                  <mat-label>{{ element.label }}</mat-label>
+                  <input matInput type="text" [formControlName]="element.name!" [placeholder]="element.placeholder || ''" [required]="element.required ?? false">
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('required')">{{ element.label }} is required</mat-error>
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('minlength')">Min length is {{ element.minLength }}</mat-error>
+                </mat-form-field>
+                
+                <mat-form-field *ngSwitchCase="'number'" appearance="outline" class="w-full">
+                  <mat-label>{{ element.label }}</mat-label>
+                  <input matInput type="number" [formControlName]="element.name!" [placeholder]="element.placeholder || ''" [required]="element.required ?? false" [min]="element.min ?? null" [max]="element.max ?? null">
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('required')">{{ element.label }} is required</mat-error>
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('min')">Value must be at least {{ element.min }}</mat-error>
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('max')">Value must not exceed {{ element.max }}</mat-error>
+                </mat-form-field>
+
+                <mat-form-field *ngSwitchCase="'textarea'" appearance="outline" class="w-full">
+                  <mat-label>{{ element.label }}</mat-label>
+                  <textarea matInput [formControlName]="element.name!" [placeholder]="element.placeholder || ''" [required]="element.required ?? false" [rows]="element.rows ?? 2"></textarea>
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('required')">{{ element.label }} is required</mat-error>
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('minlength')">Min length is {{ element.minLength }}</mat-error>
+                </mat-form-field>
+
+                <mat-form-field *ngSwitchCase="'dropdown'" appearance="outline" class="w-full">
+                  <mat-label>{{ element.label }}</mat-label>
+                  <mat-select [formControlName]="element.name!" [required]="element.required ?? false">
+                    <mat-option *ngFor="let option of element.options" [value]="option.value">{{ option.label }}</mat-option>
+                  </mat-select>
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('required')">{{ element.label }} is required</mat-error>
+                </mat-form-field>
+
+                <div *ngSwitchCase="'checkbox'">
+                  <mat-checkbox [formControlName]="element.name!" [required]="element.required ?? false">{{ element.label }}</mat-checkbox>
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('required')">You must agree to {{ element.label.toLowerCase() }}</mat-error>
+                </div>
+
+                <mat-radio-group *ngSwitchCase="'radio'" [formControlName]="element.name!" [required]="element.required ?? false">
+                  <p>{{ element.label }}</p>
+                  <div class="flex space-x-4">
+                    <mat-radio-button *ngFor="let option of element.options" [value]="option.value">{{ option.label }}</mat-radio-button>
+                  </div>
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('required')">Please select an option</mat-error>
+                </mat-radio-group>
+                
+                <mat-form-field *ngSwitchCase="'date'" appearance="outline" class="w-full">
+                  <mat-label>{{ element.label }}</mat-label>
+                  <input matInput [matDatepicker]="picker" [formControlName]="element.name!" [required]="element.required ?? false">
+                  <!-- <mat-hint>MM/DD/YYYY</mat-hint> -->
+                  <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                  <mat-datepicker #picker></mat-datepicker>
+                  <mat-error *ngIf="previewForm.get(element.name!)?.hasError('required')">{{ element.label }} is required</mat-error>
+                </mat-form-field>
+              </ng-container>
+            </ng-container>
+          </div>
+        </ng-container>
+
+        <div class="mt-6 flex justify-end">
+          <button mat-raised-button color="accent" type="submit" [disabled]="previewForm.invalid">Submit Form</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

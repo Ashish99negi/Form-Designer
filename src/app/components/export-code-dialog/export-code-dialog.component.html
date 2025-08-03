@@ -1,0 +1,23 @@
+<div class="p-4">
+      <h2 mat-dialog-title class="text-xl font-bold mb-4">Export Form Code</h2>
+      <mat-tab-group class="mb-4">
+        <mat-tab label="Component (.ts)">
+          <div class="p-4 bg-gray-100 rounded-lg overflow-x-auto my-4 max-h-[50vh]">
+            <pre class="whitespace-pre-wrap text-sm font-mono">{{ data.componentCode }}</pre>
+          </div>
+          <button mat-raised-button color="primary" [cdkCopyToClipboard]="data.componentCode" (click)="onCopy()">
+            <mat-icon>content_copy</mat-icon> Copy Component Code
+          </button>
+        </mat-tab>
+        <mat-tab label="Template (.html)">
+          <div class="p-4 bg-gray-100 rounded-lg overflow-x-auto my-4 max-h-[50vh]">
+            <pre class="whitespace-pre-wrap text-sm font-mono">{{ data.templateCode }}</pre>
+          </div>
+          <button mat-raised-button color="primary" [cdkCopyToClipboard]="data.templateCode" (click)="onCopy()">
+            <mat-icon>content_copy</mat-icon> Copy Template Code
+          </button>
+        </mat-tab>
+      </mat-tab-group>
+      <div class="flex justify-end">
+        <button mat-button [mat-dialog-close]="true">Close</button>
+      </div>
